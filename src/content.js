@@ -42,29 +42,42 @@ const SkipVideoIconOff = (props, context) => {
   // <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-off-icon lucide-video-off"><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="m2 2 20 20"/></svg>
   return {
     render: () => ({
-      svg: {
-        width: "24",
-        height: "24",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: "currentColor",
-        strokeWidth: "2",
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
+      button: {
+        className: "skip-video-icon",
+        onclick: () => props.onclick(),
+        style: {
+          height: "24px",
+          width: "30px",
+          backgroundColor: "black"
+        },
         children: [
           {
-            path: {
-              d: "M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"
-            }
-          },
-          {
-            path: {
-              d: "M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"
-            }
-          },
-          {
-            path: {
-              d: "m2 2 20 20"
+            svg: {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: "2",
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              children: [
+                {
+                  path: {
+                    d: "M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"
+                  }
+                },
+                {
+                  path: {
+                    d: "M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"
+                  }
+                },
+                {
+                  path: {
+                    d: "m2 2 20 20"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -74,29 +87,44 @@ const SkipVideoIconOff = (props, context) => {
 }
 
 const SkipVideoIconOn = (props, context) => {
+  console.log("SkipVideoIconOn", props)
+
   // I want to create an svg icon that looks like this:
   // <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-icon lucide-video"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
   return {
     render: () => ({
-      svg: {
-        width: "24",
-        height: "24",
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: "currentColor",
+      button: {
+        className: "skip-video-icon",
+        onclick: () => props.onclick(),
+        style: {
+          height: "24px",
+          width: "30px",
+          backgroundColor: "black"
+        },
         children: [
           {
-            path: {
-              d: "m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"
-            }
-          },
-          {
-            rect: {
-              x: "2",
-              y: "6",
-              width: "14",
-              height: "12",
-              rx: "2"
+            svg: {
+              width: "24",
+              height: "24",
+              viewBox: "0 0 24 24",
+              fill: "none",
+              stroke: "currentColor",
+              children: [
+                {
+                  path: {
+                    d: "m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"
+                  }
+                },
+                {
+                  rect: {
+                    x: "2",
+                    y: "6",
+                    width: "14",
+                    height: "12",
+                    rx: "2"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -163,6 +191,7 @@ const Netflix = (props, context) => {
       })
     )
   }
+
   function toggleAnalyzeVideo() {
     const currentlyAnalyzing = getState("isAnalyzing")
     if (currentlyAnalyzing) {
@@ -255,51 +284,22 @@ const Netflix = (props, context) => {
         className: "netflix-app",
         children: [
           {
-            h1: {
-              className: "netflix-title",
-              text: "Netflix"
-            }
-          },
-          {
-            button: {
-              className: "btn btn-primary",
-              text: () => `Skip Scene`,
-              onclick: () => skipScene(60)
-            }
-          },
-          {
-            button: {
-              className: "btn btn-primary",
-              text: () => `Playing: ${getState("isPlaying")}`,
-              onclick: () => playVideo()
-            }
-          },
-          {
-            button: {
-              className: "btn btn-primary",
-              onclick: () => toggleAnalyzeVideo(),
-              text: () =>
-                `Analyze Video ${getState("isAnalyzing") ? "On" : "Off"}`
-            }
-          },
-          {
             div: {
               className: "skip-video-icon",
               style: {
                 position: "absolute"
               },
-              children: [
-                {
-                  div: {
-                    children: [
-                      {
-                        SkipVideoIconOn: {}
-                      },
-                      { SkipVideoIconOff: {} }
-                    ]
+              children: () => {
+                if (getState("isAnalyzing")) {
+                  return {
+                    SkipVideoIconOn: { onclick: () => toggleAnalyzeVideo() }
+                  }
+                } else {
+                  return {
+                    SkipVideoIconOff: { onclick: () => toggleAnalyzeVideo() }
                   }
                 }
-              ]
+              }
             }
           }
         ]
