@@ -1,3 +1,15 @@
+const twindCss = document.createElement("script")
+twindCss.src = chrome.runtime.getURL("twind.js")
+twindCss.onload = function () {
+  console.log("Twind CSS loaded successfully")
+  // Initialize the app only after twind is loaded
+  initializeApp()
+}
+twindCss.onerror = function () {
+  console.error("Failed to load Twind CSS")
+}
+document.head.appendChild(twindCss)
+
 const script = document.createElement("script")
 script.src = chrome.runtime.getURL("inject.js")
 script.onload = function () {
@@ -39,23 +51,22 @@ function jurisApp() {
 
 const SkipVideoIconOff = (props, context) => {
   // I want to create an svg icon that looks like this:
-  // <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-off-icon lucide-video-off"><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="m2 2 20 20"/></svg>
+  // <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-icon lucide-video"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
   return {
     render: () => ({
       button: {
-        className: "skip-video-icon",
+        className: "bg-transparent",
         onclick: () => props.onclick(),
         style: {
-          height: "24px",
-          width: "30px",
-          backgroundColor: "black"
+          height: "32px",
+          width: "32px"
         },
         children: [
           {
             svg: {
-              width: "24",
-              height: "24",
-              viewBox: "0 0 24 24",
+              width: "32",
+              height: "32",
+              viewBox: "0 0 32 32",
               fill: "none",
               stroke: "currentColor",
               strokeWidth: "2",
@@ -94,19 +105,18 @@ const SkipVideoIconOn = (props, context) => {
   return {
     render: () => ({
       button: {
-        className: "skip-video-icon",
+        className: "bg-transparent",
         onclick: () => props.onclick(),
         style: {
-          height: "24px",
-          width: "30px",
-          backgroundColor: "black"
+          height: "32px",
+          width: "32px"
         },
         children: [
           {
             svg: {
-              width: "24",
-              height: "24",
-              viewBox: "0 0 24 24",
+              width: "32",
+              height: "32",
+              viewBox: "0 0 32 32",
               fill: "none",
               stroke: "currentColor",
               children: [
@@ -162,6 +172,8 @@ const Netflix = (props, context) => {
       type: "mute"
     }
   ]
+
+  let pendingSceneStart = null
 
   function analyzeVideoAt(timeMs) {
     // Convert to whole second like the provided example
@@ -240,14 +252,6 @@ const Netflix = (props, context) => {
     }, seconds * 1000)
   }
 
-  function playVideo() {
-    window.dispatchEvent(
-      new CustomEvent("NetflixCommand", {
-        detail: { command: "togglePlayPause" }
-      })
-    )
-  }
-
   function toggleAnalyzeVideo() {
     const currentlyAnalyzing = getState("isAnalyzing")
     if (currentlyAnalyzing) {
@@ -278,6 +282,49 @@ const Netflix = (props, context) => {
         })
       )
     }
+  }
+  
+  function sceneCaptureByKeys(type = "skip") {
+    const currentSeconds = Math.floor(Number(getState("playTime")) / 1000)
+    if (pendingSceneStart === null) {
+      pendingSceneStart = currentSeconds
+      console.log("Scene start captured:", pendingSceneStart)
+    } else {
+      const start = Math.min(pendingSceneStart, currentSeconds)
+      const end = Math.max(pendingSceneStart, currentSeconds)
+      console.log("Scene end captured:", end)
+      const newScene = {
+        name: `Scene ${scenes.length + 1}`,
+        start,
+        end,
+        type: type
+      }
+      scenes.push(newScene)
+      console.log("New scene added:", newScene)
+      console.log("scenes", scenes)
+      pendingSceneStart = null
+    }
+  }
+
+  function keyboardEventManager() {
+    window.addEventListener("keydown", (e) => {
+      console.log("keydown", e)
+      // Only allow adding scenes when analyzing and playing
+      if (getState("isAnalyzing") && getState("isPlaying") === "playing") {
+        if (e.code === "KeyS") {
+          sceneCaptureByKeys("skip")
+        }
+        if (e.code === "KeyB") {
+          sceneCaptureByKeys("blur")
+        }
+        if (e.code === "KeyM") {
+          sceneCaptureByKeys("mute")
+        }
+      }
+    })
+  }
+  function removeKeyboardEventManager() {
+    window.removeEventListener("keydown", keyboardEventManager)
   }
 
   window.addEventListener("NetflixResponse", (e) => {
@@ -335,9 +382,17 @@ const Netflix = (props, context) => {
   })
 
   return {
+    hooks: {
+      onMount: () => {
+        keyboardEventManager()
+      },
+      onUnmount: () => {
+        removeKeyboardEventManager()
+      }
+    },
     render: () => ({
       div: {
-        className: "netflix-app",
+        className: "netflix-app absolute top-[20px] right-[100px]",
         children: [
           {
             div: {
@@ -364,13 +419,15 @@ const Netflix = (props, context) => {
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", jurisApp)
-} else {
-  // Netflix-specific functionality
-  if (window.location.hostname.includes("netflix.com")) {
-    const juris = initJuris()
-    jurisApp()
-    juris.render("#juris-extension")
+function initializeApp() {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", jurisApp)
+  } else {
+    // Netflix-specific functionality
+    if (window.location.hostname.includes("netflix.com")) {
+      const juris = initJuris()
+      jurisApp()
+      juris.render("#juris-extension")
+    }
   }
 }
