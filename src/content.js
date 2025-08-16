@@ -48,7 +48,7 @@ function jurisApp() {
   app.id = "juris-extension"
   document.body.appendChild(app)
 }
-
+// UI Components
 const SkipVideoIconOff = (props, context) => {
   // I want to create an svg icon that looks like this:
   // <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-icon lucide-video"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
@@ -143,35 +143,39 @@ const SkipVideoIconOn = (props, context) => {
   }
 }
 
+// Netflix Component
+
 const Netflix = (props, context) => {
   const { getState, setState } = context
 
-  const scenes = [
-    {
-      name: "Scene 1",
-      start: 100,
-      end: 110,
-      type: "skip"
-    },
-    {
-      name: "Scene 2",
-      start: 115,
-      end: 120,
-      type: "skip"
-    },
-    {
-      name: "Scene 3",
-      start: 122,
-      end: 130,
-      type: "blur"
-    },
-    {
-      name: "Scene 4",
-      start: 135,
-      end: 140,
-      type: "mute"
-    }
-  ]
+  // const scenes = [
+  //   {
+  //     name: "Scene 1",
+  //     start: 100,
+  //     end: 110,
+  //     type: "skip"
+  //   },
+  //   {
+  //     name: "Scene 2",
+  //     start: 115,
+  //     end: 120,
+  //     type: "skip"
+  //   },
+  //   {
+  //     name: "Scene 3",
+  //     start: 122,
+  //     end: 130,
+  //     type: "blur"
+  //   },
+  //   {
+  //     name: "Scene 4",
+  //     start: 135,
+  //     end: 140,
+  //     type: "mute"
+  //   }
+  // ]
+
+  const scenes = []
 
   let pendingSceneStart = null
 
@@ -283,7 +287,7 @@ const Netflix = (props, context) => {
       )
     }
   }
-  
+
   function sceneCaptureByKeys(type = "skip") {
     const currentSeconds = Math.floor(Number(getState("playTime")) / 1000)
     if (pendingSceneStart === null) {
