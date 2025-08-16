@@ -140,22 +140,26 @@ const Netflix = (props, context) => {
     {
       name: "Scene 1",
       start: 100,
-      end: 110
+      end: 110,
+      type: "skip"
     },
     {
       name: "Scene 2",
       start: 115,
-      end: 120
+      end: 120,
+      type: "skip"
     },
     {
       name: "Scene 3",
       start: 122,
-      end: 130
+      end: 130,
+      type: "blur"
     },
     {
       name: "Scene 4",
       start: 135,
-      end: 140
+      end: 140,
+      type: "mute"
     }
   ]
 
@@ -169,10 +173,35 @@ const Netflix = (props, context) => {
 
     // Only act when time equals the start of a skip range
     const matching = scenes.find((scene) => scene.start === timeSeconds)
-    if (matching) {
+    const endMatching = scenes.find((scene) => scene.end === timeSeconds)
+
+    if (matching && matching.type === "skip") {
       console.log("skipping", matching.end)
       // Jump to the end of the section, like the reference code
       skipScene(matching.end)
+    }
+    // Blur the scene
+    if (matching && matching.type === "blur") {
+      console.log("blurring", matching.end)
+      // This function should only be called once, so we need to check if the blur is already applied
+      const video = document.querySelector("video")
+      if (video.style.filter === "blur(5rem)") {
+        return
+      } else {
+        blurScene(matching.end - matching.start)
+      }
+    }
+
+    // Mute the scene
+    if (matching && matching.type === "mute") {
+      console.log("muting", matching.end)
+      // This function should only be called once, so we need to check if the mute is already applied
+      muteScene()
+    }
+
+    if (endMatching && endMatching.type === "mute") {
+      console.log("unmuting", endMatching.end)
+      unmuteScene()
     }
   }
 
@@ -182,6 +211,33 @@ const Netflix = (props, context) => {
         detail: { command: "seek", data: { time: seconds * 1000 } } // Seek to 1 minute
       })
     )
+  }
+
+  function muteScene() {
+    window.dispatchEvent(
+      new CustomEvent("NetflixCommand", {
+        detail: { command: "mute" }
+      })
+    )
+  }
+
+  function unmuteScene() {
+    window.dispatchEvent(
+      new CustomEvent("NetflixCommand", {
+        detail: { command: "unmute" }
+      })
+    )
+  }
+
+  function blurScene(seconds) {
+    // Get the video element
+    const video = document.querySelector("video")
+    // Set the blur effect
+    video.style.cssText += "filter: blur(5rem)"
+    // After 1 second, remove the blur effect
+    setTimeout(() => {
+      video.style.filter = "blur(0rem)"
+    }, seconds * 1000)
   }
 
   function playVideo() {
