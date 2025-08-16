@@ -12,14 +12,14 @@
   "permissions": ["activeTab"],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["juris.js", "content.js"],
+      "matches": ["https://www.netflix.com/*"],
+      "js": ["juris.js", "content.js", "twind.js"],
       "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["inject.js"],
+      "resources": ["inject.js", "twind.js"],
       "matches": ["<all_urls>"]
     }
   ],

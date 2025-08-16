@@ -175,6 +175,18 @@ function setupNetflixPageAPI(videoPlayer) {
         console.error("Error getting duration:", error)
         return null
       }
+    },
+
+    // Mute/Unmute
+    setVolume: (volume) => {
+      try {
+        const player = window.netflixAPI.getCurrentPlayer()
+        if (player) {
+          player.setVolume(volume)
+        }
+      } catch (error) {
+        console.error("Error setting volume:", error)
+      }
     }
   }
 
@@ -198,6 +210,14 @@ function setupNetflixPageAPI(videoPlayer) {
           })
         )
         break
+      case "mute":
+        console.log("muting from inject")
+        window.netflixAPI.setVolume(0)
+        break
+      case "unmute":
+        console.log("unmuting from inject")
+        window.netflixAPI.setVolume(1)
+        break
       case "getDuration":
         const duration = window.netflixAPI.getDuration()
         window.dispatchEvent(
@@ -206,6 +226,7 @@ function setupNetflixPageAPI(videoPlayer) {
           })
         )
         break
+
       case "getPlaybackState":
         const player = window.netflixAPI.getCurrentPlayer()
         console.log({ sophek: player.isPlaying() })
