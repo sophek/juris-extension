@@ -13,6 +13,6 @@
   },
   "dependencies": {
     "@instantdb/core": "^0.20.28",
-    "juris": "^0.86.0"
+    "juris": "^0.9.0"
   }
 }

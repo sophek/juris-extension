@@ -44,7 +44,7 @@ script.onload = function () {
 
 function initJuris() {
   const juris = new Juris({
-    logLevel: "warn",
+    logLevel: "debug",
     components: {
       Netflix,
       SkipVideoIconOff,
