@@ -1,3 +1,28 @@
+import { init, i, id } from "@instantdb/core"
+// ID for app: Netflix-CleanMix
+const APP_ID = "6933cbb0-2972-4c2c-a647-842541953fa6"
+
+const schema = i.schema({
+  entities: {
+    time_codes: i.entity({
+      name: i.string(),
+      start: i.number(),
+      end: i.number(),
+      type: i.string()
+    })
+  },
+  links: {
+    movies: {
+      forward: { on: "time_codes", has: "one", label: "movies" },
+      reverse: { on: "movies", has: "many", label: "time_codes" }
+    }
+  }
+})
+
+// Initialize the database
+// ---------
+const db = init({ appId: APP_ID, schema })
+
 const twindCss = document.createElement("script")
 twindCss.src = chrome.runtime.getURL("twind.js")
 twindCss.onload = function () {
@@ -19,6 +44,7 @@ script.onload = function () {
 
 function initJuris() {
   const juris = new Juris({
+    logLevel: "warn",
     components: {
       Netflix,
       SkipVideoIconOff,
@@ -98,8 +124,6 @@ const SkipVideoIconOff = (props, context) => {
 }
 
 const SkipVideoIconOn = (props, context) => {
-  console.log("SkipVideoIconOn", props)
-
   // I want to create an svg icon that looks like this:
   // <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-icon lucide-video"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
   return {
@@ -146,6 +170,20 @@ const SkipVideoIconOn = (props, context) => {
 // Netflix Component
 
 const Netflix = (props, context) => {
+  let scenes = []
+  db.subscribeQuery({ time_codes: {} }, (resp) => {
+    if (resp.error) {
+      console.log("error", resp.error)
+      //renderError(resp.error.message) // Pro-tip: Check you have the right appId!
+      return
+    }
+    if (resp.data) {
+      console.log("data", resp.data)
+      //render(resp.data)
+      scenes = resp.data.time_codes
+    }
+  })
+
   const { getState, setState } = context
 
   // const scenes = [
@@ -174,8 +212,6 @@ const Netflix = (props, context) => {
   //     type: "mute"
   //   }
   // ]
-
-  const scenes = []
 
   let pendingSceneStart = null
 
@@ -219,6 +255,17 @@ const Netflix = (props, context) => {
       console.log("unmuting", endMatching.end)
       unmuteScene()
     }
+  }
+
+  function createLinkDocument(table, documentData, links) {
+    let transaction = db.tx[table][id()].update(documentData)
+
+    // Chain multiple links
+    Object.entries(links).forEach(([linkName, linkIds]) => {
+      transaction = transaction.link({ [linkName]: linkIds })
+    })
+
+    return db.transact(transaction)
   }
 
   function skipScene(seconds) {
@@ -304,6 +351,11 @@ const Netflix = (props, context) => {
         type: type
       }
       scenes.push(newScene)
+      //addTimeCode(newScene.name, newScene.start, newScene.end, newScene.type)
+      createLinkDocument("time_codes", newScene, {
+        movies: ["8cebe074-dc60-4ddc-bbc2-76f0272d694b"]
+      })
+
       console.log("New scene added:", newScene)
       console.log("scenes", scenes)
       pendingSceneStart = null
@@ -336,7 +388,6 @@ const Netflix = (props, context) => {
     switch (command) {
       case "getCurrentTime":
         if (getState("isAnalyzing") && getState("isPlaying") === "playing") {
-          console.log(`⏰ Current video time: ${result}ms`)
           setState("playTime", result)
           analyzeVideoAt(result)
         }
@@ -347,7 +398,6 @@ const Netflix = (props, context) => {
       case "getPlaybackState":
         // Normalize to boolean for logic, but keep state as string for UI
         const isPlayingBool = result === true || result === "playing"
-        console.log(`🎥 Video is ${isPlayingBool ? "playing" : "paused"}`)
         setState("isPlaying", isPlayingBool ? "playing" : "paused")
 
         // If paused while analyzing, stop analyzing and mark to resume on play
