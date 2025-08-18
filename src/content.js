@@ -2,26 +2,26 @@ import { init, i, id } from "@instantdb/core"
 // ID for app: Netflix-CleanMix
 const APP_ID = "6933cbb0-2972-4c2c-a647-842541953fa6"
 
-const schema = i.schema({
-  entities: {
-    time_codes: i.entity({
-      name: i.string(),
-      start: i.number(),
-      end: i.number(),
-      type: i.string()
-    })
-  },
-  links: {
-    movies: {
-      forward: { on: "time_codes", has: "one", label: "movies" },
-      reverse: { on: "movies", has: "many", label: "time_codes" }
-    }
-  }
-})
+// const schema = i.schema({
+//   entities: {
+//     time_codes: i.entity({
+//       name: i.string(),
+//       start: i.number(),
+//       end: i.number(),
+//       type: i.string()
+//     })
+//   },
+//   links: {
+//     movies: {
+//       forward: { on: "time_codes", has: "one", label: "movies" },
+//       reverse: { on: "movies", has: "many", label: "time_codes" }
+//     }
+//   }
+// })
 
 // Initialize the database
 // ---------
-const db = init({ appId: APP_ID, schema })
+const db = init({ appId: APP_ID })
 
 const twindCss = document.createElement("script")
 twindCss.src = chrome.runtime.getURL("twind.js")
@@ -42,9 +42,32 @@ script.onload = function () {
 }
 ;(document.head || document.documentElement).appendChild(script)
 
+function UtilsManager() {
+  return {
+    hooks: {
+      onRegister: () => {
+        console.log("UtilsManager mounted")
+      },
+      onUnregister: () => {
+        console.log("UtilsManager unmounted")
+      }
+    },
+    api: {
+      getNetflixVideoId: (url) => {
+        const regex = /\/watch\/(\d+)/
+        const match = url.match(regex)
+        return match ? match[1] : null
+      }
+    }
+  }
+}
+
 function initJuris() {
   const juris = new Juris({
     logLevel: "debug",
+    headlessComponents: {
+      UtilsManager: { fn: UtilsManager, options: { autoInit: true } }
+    },
     components: {
       Netflix,
       SkipVideoIconOff,
@@ -74,6 +97,9 @@ function jurisApp() {
   app.id = "juris-extension"
   document.body.appendChild(app)
 }
+
+// Headless Components
+
 // UI Components
 const SkipVideoIconOff = (props, context) => {
   // I want to create an svg icon that looks like this:
@@ -169,20 +195,56 @@ const SkipVideoIconOn = (props, context) => {
 
 // Netflix Component
 
+function getNetflixVideoId(url) {
+  // This regex looks for digits that come after "/watch/" and before a "?"
+  const regex = /\/watch\/(\d+)/
+  const match = url.match(regex)
+
+  // If a match is found, return the captured ID (the first captured group)
+  return match ? match[1] : null
+}
+
 const Netflix = (props, context) => {
+  const { UtilsManager } = context
   let scenes = []
-  db.subscribeQuery({ time_codes: {} }, (resp) => {
-    if (resp.error) {
-      console.log("error", resp.error)
-      //renderError(resp.error.message) // Pro-tip: Check you have the right appId!
-      return
+  let movieId = ""
+
+  console.log("UtilsManager", UtilsManager)
+
+  db.subscribeQuery(
+    {
+      $users: {
+        $: {
+          where: {
+            email: "sophek@gmail.com"
+          }
+        },
+        movies: {
+          $: {
+            where: {
+              watch_id: getNetflixVideoId(window.location.href)
+            }
+          },
+
+          time_codes: {}
+        }
+      }
+    },
+    (resp) => {
+      if (resp.error) {
+        console.log("error", resp.error)
+        //renderError(resp.error.message) // Pro-tip: Check you have the right appId!
+        return
+      }
+      if (resp.data) {
+        console.log("data", resp.data)
+        console.log("watch_id", getNetflixVideoId(window.location.href))
+        //render(resp.data)
+        scenes = resp.data.$users?.[0]?.movies?.[0]?.time_codes || []
+        movieId = resp.data.$users?.[0]?.movies?.[0]?.id || ""
+      }
     }
-    if (resp.data) {
-      console.log("data", resp.data)
-      //render(resp.data)
-      scenes = resp.data.time_codes
-    }
-  })
+  )
 
   const { getState, setState } = context
 
@@ -336,6 +398,7 @@ const Netflix = (props, context) => {
   }
 
   function sceneCaptureByKeys(type = "skip") {
+    console.log("UtilsManager", UtilsManager)
     const currentSeconds = Math.floor(Number(getState("playTime")) / 1000)
     if (pendingSceneStart === null) {
       pendingSceneStart = currentSeconds
@@ -353,7 +416,7 @@ const Netflix = (props, context) => {
       scenes.push(newScene)
       //addTimeCode(newScene.name, newScene.start, newScene.end, newScene.type)
       createLinkDocument("time_codes", newScene, {
-        movies: ["8cebe074-dc60-4ddc-bbc2-76f0272d694b"]
+        movies: [movieId]
       })
 
       console.log("New scene added:", newScene)
@@ -379,6 +442,7 @@ const Netflix = (props, context) => {
       }
     })
   }
+
   function removeKeyboardEventManager() {
     window.removeEventListener("keydown", keyboardEventManager)
   }
