@@ -193,7 +193,6 @@ function setupNetflixPageAPI(videoPlayer) {
   // Listen for commands from content script
   window.addEventListener("NetflixCommand", (event) => {
     const { command, data } = event.detail
-    console.log(`🎮 [Page Context] Received command: ${command}`, data)
 
     switch (command) {
       case "seek":
@@ -211,11 +210,9 @@ function setupNetflixPageAPI(videoPlayer) {
         )
         break
       case "mute":
-        console.log("muting from inject")
         window.netflixAPI.setVolume(0)
         break
       case "unmute":
-        console.log("unmuting from inject")
         window.netflixAPI.setVolume(1)
         break
       case "getDuration":
@@ -229,7 +226,7 @@ function setupNetflixPageAPI(videoPlayer) {
 
       case "getPlaybackState":
         const player = window.netflixAPI.getCurrentPlayer()
-        console.log({ sophek: player.isPlaying() })
+
         window.dispatchEvent(
           new CustomEvent("NetflixResponse", {
             detail: {
