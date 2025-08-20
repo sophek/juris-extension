@@ -1,4 +1,7 @@
 import { init, i, id } from "@instantdb/core"
+import { Juris } from "juris"
+import { HeadlessManager } from "juris/juris-headless.js"
+
 // ID for app: Netflix-CleanMix
 const APP_ID = "6933cbb0-2972-4c2c-a647-842541953fa6"
 
@@ -42,36 +45,29 @@ script.onload = function () {
 }
 ;(document.head || document.documentElement).appendChild(script)
 
-function UtilsManager() {
-  return {
-    hooks: {
-      onRegister: () => {
-        console.log("UtilsManager mounted")
-      },
-      onUnregister: () => {
-        console.log("UtilsManager unmounted")
-      }
-    },
-    api: {
-      getNetflixVideoId: (url) => {
-        const regex = /\/watch\/(\d+)/
-        const match = url.match(regex)
-        return match ? match[1] : null
-      }
-    }
-  }
-}
-
 function initJuris() {
   const juris = new Juris({
-    logLevel: "debug",
+    features: { headless: HeadlessManager },
     headlessComponents: {
-      UtilsManager: { fn: UtilsManager, options: { autoInit: true } }
+      UtilsManager: (props, context) => ({
+        api: {
+          getNetflixVideoId: (url) => {
+            const regex = /\/watch\/(\d+)/
+            const match = url.match(regex)
+            return match ? match[1] : null
+          }
+        },
+        hooks: {
+          onRegister: () => console.log("UtilsManager ready")
+        }
+      })
     },
+    logLevel: "debug",
     components: {
       Netflix,
       SkipVideoIconOff,
-      SkipVideoIconOn
+      SkipVideoIconOn,
+      Timeline
     },
 
     layout: {
@@ -86,7 +82,8 @@ function initJuris() {
       isAnalyzing: false,
       analyzeInterval: null,
       resumeOnPlay: false,
-      lastHandledSecond: null
+      lastHandledSecond: null,
+      scenes: []
     }
   })
   return juris
@@ -107,7 +104,7 @@ const SkipVideoIconOff = (props, context) => {
   return {
     render: () => ({
       button: {
-        className: "bg-transparent",
+        className: "bg-transparent opacity-50 hover:opacity-100",
         onclick: () => props.onclick(),
         style: {
           height: "32px",
@@ -155,11 +152,11 @@ const SkipVideoIconOn = (props, context) => {
   return {
     render: () => ({
       button: {
-        className: "bg-transparent",
+        className: "bg-red-500 rounded-full p-[6px]",
         onclick: () => props.onclick(),
         style: {
-          height: "32px",
-          width: "32px"
+          height: "36px",
+          width: "36px"
         },
         children: [
           {
@@ -204,12 +201,160 @@ function getNetflixVideoId(url) {
   return match ? match[1] : null
 }
 
+const Timeline = (props, context) => {
+  const { getState, setState } = context
+
+  console.log("Timeline", () => getState("scenes"))
+
+  // Sample timeline segments - you can pass these as props or manage them in state
+  // let segments = props.segments || [
+  //   {
+  //     id: 1,
+  //     type: "Cut",
+  //     left: "10%",
+  //     width: "20%",
+  //     color: "#ef4444",
+  //     borderColor: "rgba(239, 68, 68, 0.5)",
+  //     startTime: "0:09",
+  //     endTime: "0:27"
+  //   },
+  //   {
+  //     id: 2,
+  //     type: "Effect",
+  //     left: "40%",
+  //     width: "25%",
+  //     color: "#a855f7",
+  //     borderColor: "rgba(168, 85, 247, 0.5)",
+  //     startTime: "0:36",
+  //     endTime: "0:58"
+  //   }
+  // ]
+  let segments =
+    props.segments ||
+    getState("scenes").map((scene, idx) => ({
+      ...scene,
+      left: `${10 + idx * 10}%`,
+      width: `${(scene.endTime - scene.startTime) * 10}px`,
+      color:
+        scene.type === "skip"
+          ? "red"
+          : scene.type === "blur"
+          ? "blue"
+          : scene.type === "mute"
+          ? "green"
+          : "black"
+    }))
+
+  // Function to generate time markers for current 100-second interval
+  const generateTimeMarkers = (currentTimeSeconds) => {
+    const intervalStart = Math.floor(currentTimeSeconds / 100) * 100
+    const intervalEnd = intervalStart + 100
+    const markers = []
+
+    for (let seconds = intervalStart; seconds <= intervalEnd; seconds += 10) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      markers.push(`${minutes}:${remainingSeconds.toString().padStart(2, "0")}`)
+    }
+
+    return markers
+  }
+
+  const handleSegmentClick = (segmentId) => {
+    console.log(`Segment ${segmentId} clicked - implement delete functionality`)
+    // You can implement delete functionality here
+    if (props.onSegmentDelete) {
+      props.onSegmentDelete(segmentId)
+    }
+  }
+
+  return {
+    render: () => ({
+      div: {
+        className: "mx-auto max-w-[80%] space-y-4",
+        children: [
+          {
+            div: {
+              className: "relative h-[50px] top-[5rem]",
+              children: [
+                // Time markers
+                {
+                  div: {
+                    className:
+                      "mb-2 flex justify-between text-3xl text-white bg-black",
+                    children: generateTimeMarkers(
+                      Math.floor(Number(getState("playTime")) / 1000)
+                    ).map((time) => ({
+                      span: {
+                        text: time
+                      }
+                    }))
+                  }
+                },
+                // Timeline container
+                {
+                  div: {
+                    className:
+                      "relative h-[50px] cursor-pointer overflow-hidden rounded-lg border border-gray-700 bg-black hover:border-blue-400/50",
+                    children: segments.map((segment) => ({
+                      div: {
+                        className:
+                          "group absolute top-2 bottom-2 cursor-pointer rounded border-2",
+                        style: {
+                          left: segment.left,
+                          width: segment.width,
+                          backgroundColor: segment.color,
+                          borderColor: segment.borderColor
+                        },
+                        title: `${segment.type}: ${segment.startTime} - ${segment.endTime} (Click to delete)`,
+                        onclick: () => handleSegmentClick(segment.id),
+                        children: [
+                          // Label
+                          {
+                            div: {
+                              className:
+                                "absolute inset-0 flex items-center justify-center",
+                              children: [
+                                {
+                                  span: {
+                                    className:
+                                      "rounded px-1 text-2xl text-black",
+                                    text: segment.type
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          // Left border accent
+                          {
+                            div: {
+                              className:
+                                "absolute top-0 left-0 h-full w-1 rounded-l",
+                              style: {
+                                backgroundColor: segment.color
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }))
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    })
+  }
+}
+
 const Netflix = (props, context) => {
-  const { UtilsManager } = context
+  const { UtilsManager, getState, setState } = context
   let scenes = []
   let movieId = ""
 
-  console.log("UtilsManager", UtilsManager)
+  console.log("UtilsManager", context)
 
   db.subscribeQuery(
     {
@@ -242,11 +387,22 @@ const Netflix = (props, context) => {
         //render(resp.data)
         scenes = resp.data.$users?.[0]?.movies?.[0]?.time_codes || []
         movieId = resp.data.$users?.[0]?.movies?.[0]?.id || ""
+        setState(
+          "scenes",
+          scenes.map((scene) => ({
+            id: scene.id,
+            type: scene.type,
+            left: `${scene.start * 10}px`,
+            width: `${(scene.end - scene.start) * 10}px`,
+            color: "#ef4444",
+            borderColor: "rgba(239, 68, 68, 0.5)",
+            startTime: scene.start,
+            endTime: scene.end
+          }))
+        )
       }
     }
   )
-
-  const { getState, setState } = context
 
   // const scenes = [
   //   {
@@ -399,6 +555,7 @@ const Netflix = (props, context) => {
 
   function sceneCaptureByKeys(type = "skip") {
     console.log("UtilsManager", UtilsManager)
+
     const currentSeconds = Math.floor(Number(getState("playTime")) / 1000)
     if (pendingSceneStart === null) {
       pendingSceneStart = currentSeconds
@@ -420,8 +577,9 @@ const Netflix = (props, context) => {
       })
 
       console.log("New scene added:", newScene)
-      console.log("scenes", scenes)
+      console.log("scenes sophek", scenes)
       pendingSceneStart = null
+      setState("scenes", scenes)
     }
   }
 
@@ -510,13 +668,17 @@ const Netflix = (props, context) => {
     },
     render: () => ({
       div: {
-        className: "netflix-app absolute top-[20px] right-[100px]",
+        className: "netflix-app w-full top-[20px] right-[100px]",
         children: [
           {
             div: {
               className: "skip-video-icon",
               style: {
-                position: "absolute"
+                position: "absolute",
+                width: "36px",
+                height: "36px",
+                top: "8rem",
+                left: "10rem"
               },
               children: () => {
                 if (getState("isAnalyzing")) {
@@ -526,6 +688,19 @@ const Netflix = (props, context) => {
                 } else {
                   return {
                     SkipVideoIconOff: { onclick: () => toggleAnalyzeVideo() }
+                  }
+                }
+              }
+            }
+          },
+
+          {
+            div: {
+              className: "timeline-container",
+              children: () => {
+                if (getState("isAnalyzing")) {
+                  return {
+                    Timeline: {}
                   }
                 }
               }
