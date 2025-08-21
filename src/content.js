@@ -67,7 +67,8 @@ function initJuris() {
       Netflix,
       SkipVideoIconOff,
       SkipVideoIconOn,
-      Timeline
+      Timeline,
+      TimeLineToolbar
     },
 
     layout: {
@@ -83,7 +84,9 @@ function initJuris() {
       analyzeInterval: null,
       resumeOnPlay: false,
       lastHandledSecond: null,
-      scenes: []
+      scenes: [],
+      totalDuration: 0,
+      volume: 100
     }
   })
   return juris
@@ -98,6 +101,190 @@ function jurisApp() {
 // Headless Components
 
 // UI Components
+
+const TimeLineToolbar = (props, context) => {
+  const { getState, setState } = context
+
+  // Helper function to format time
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  // Helper function to create segments
+  const createSegment = (type) => {
+    const currentTime = getState("playTime") || 0
+    const currentTimeSeconds = Math.floor(currentTime / 1000)
+
+    // Create a new segment
+    const newSegment = {
+      id: Date.now(),
+      type: type,
+      start: currentTimeSeconds,
+      end: currentTimeSeconds + 10, // 10 second default duration
+      startTime: currentTimeSeconds,
+      endTime: currentTimeSeconds + 10
+    }
+
+    // Add to existing scenes
+    const currentScenes = getState("scenes") || []
+    setState("scenes", [...currentScenes, newSegment])
+  }
+
+  return {
+    render: () => ({
+      div: {
+        style: {
+          minWidth: "80%",
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          padding: "2rem"
+        },
+        className:
+          "w-full flex justify-center mx-auto bg-editor-panel rounded-lg overflow-hidden shadow-2xl absolute",
+        children: [
+          {
+            div: {
+              className: "flex items-center justify-between p-4 gap-12",
+              children: [
+                // Main Controls
+                {
+                  div: {
+                    className: "flex items-center space-x-2",
+                    children: [
+                      // Segment Controls
+                      {
+                        button: {
+                          onclick: () => createSegment("skip"),
+                          className:
+                            "px-8 py-6 rounded-md bg-red-600 hover:bg-red-700 transition-colors text-white text-2xl font-medium",
+                          text: "+ Skip ✂"
+                        }
+                      },
+                      {
+                        button: {
+                          onclick: () => createSegment("blur"),
+                          className:
+                            "px-8 py-6 rounded-md bg-green-600 hover:bg-green-700 transition-colors text-white text-2xl font-medium",
+                          text: "+ Blur 💧"
+                        }
+                      },
+                      {
+                        button: {
+                          onclick: () => createSegment("mute"),
+                          className:
+                            "px-8 py-6 rounded-md bg-orange-500 hover:bg-blue-700 transition-colors text-white text-2xl font-medium",
+                          text: "+ Mute 🔊"
+                        }
+                      }
+                    ]
+                  }
+                },
+                // Playback Controls
+                {
+                  div: {
+                    className: "flex items-center space-x-3",
+                    children: [
+                      {
+                        button: {
+                          onclick: () => {
+                            const currentTime = getState("playTime") || 0
+                            const newTime = Math.max(0, currentTime - 1000)
+                            setState("playTime", newTime)
+                          },
+                          className:
+                            "p-2 rounded-md hover:bg-editor-hover transition-colors",
+                          children: [
+                            {
+                              div: {
+                                className: "w-15 h-15 text-6xl",
+                                text: "⏮" // SkipBack icon placeholder
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        button: {
+                          onclick: () => {
+                            const isPlaying = getState("isPlaying")
+                            setState(
+                              "isPlaying",
+                              isPlaying === "playing" ? "paused" : "playing"
+                            )
+                          },
+                          className:
+                            "p-3 rounded-full bg-editor-track bg-red-500 hover:bg-opacity-80 transition-colors",
+                          children: [
+                            {
+                              div: {
+                                className: "w-15 h-15 text-6xl",
+                                text: () => {
+                                  const isPlaying = getState("isPlaying")
+                                  return isPlaying === "playing" ? "⏸" : "▶" // Pause/Play icon placeholder
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        button: {
+                          onclick: () => {
+                            const currentTime = getState("playTime") || 0
+                            const totalDuration = getState("totalDuration") || 0
+                            const newTime = Math.min(
+                              totalDuration,
+                              currentTime + 1000
+                            )
+                            setState("playTime", newTime)
+                          },
+                          className:
+                            "p-2 rounded-md hover:bg-editor-hover transition-colors",
+                          children: [
+                            {
+                              div: {
+                                className: "w-15 h-15 text-6xl",
+                                text: "⏭" // SkipForward icon placeholder
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                // Time Display and Volume Control
+                {
+                  div: {
+                    className: "flex items-center space-x-4",
+                    children: [
+                      {
+                        div: {
+                          className: "text-editor-text font-mono text-6xl",
+                          text: () => {
+                            const currentTime = getState("playTime") || 0
+                            const totalDuration = getState("totalDuration") || 0
+                            return `${formatTime(
+                              Math.floor(currentTime / 1000)
+                            )} / ${formatTime(
+                              Math.floor(totalDuration / 1000)
+                            )}`
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    })
+  }
+}
+
 const SkipVideoIconOff = (props, context) => {
   // I want to create an svg icon that looks like this:
   // <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-video-icon lucide-video"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
@@ -237,11 +424,11 @@ const Timeline = (props, context) => {
       width: `${(scene.endTime - scene.startTime) * 10}px`,
       color:
         scene.type === "skip"
-          ? "red"
+          ? "rgb(220 38 38 / 50%)"
           : scene.type === "blur"
-          ? "blue"
+          ? "rgb(22 163 74 / 50%)"
           : scene.type === "mute"
-          ? "green"
+          ? "rgb(251 146 60 / 50%)"
           : "black"
     }))
 
@@ -271,22 +458,46 @@ const Timeline = (props, context) => {
   return {
     render: () => ({
       div: {
-        className: "mx-auto max-w-[80%] space-y-4",
+        className: "mx-auto max-w-[100%] space-y-4",
         children: [
           {
             div: {
-              className: "relative h-[50px] top-[5rem]",
+              className: "relative h-[50px] top-[4rem]",
+              style: {
+                height: "16rem"
+              },
               children: [
                 // Time markers
                 {
                   div: {
                     className:
-                      "mb-2 flex justify-between text-3xl text-white bg-black",
+                      "mb-2 flex justify-between text-3xl text-white bg-black h-[30px]",
                     children: generateTimeMarkers(
                       Math.floor(Number(getState("playTime")) / 1000)
                     ).map((time) => ({
-                      span: {
-                        text: time
+                      div: {
+                        className: "p-6",
+                        children: {
+                          span: {
+                            text: time
+                          }
+                        }
+                      }
+                    }))
+                  }
+                },
+                {
+                  div: {
+                    className:
+                      "mb-2 flex justify-between text-3xl text-white bg-black h-[10px] relative top-[-5px]",
+                    children: Array.from({ length: 11 }).map((_, index) => ({
+                      div: {
+                        className: "flex flex-col gap-2",
+                        children: {
+                          span: {
+                            text: "|"
+                          }
+                        }
                       }
                     }))
                   }
@@ -295,7 +506,10 @@ const Timeline = (props, context) => {
                 {
                   div: {
                     className:
-                      "relative h-[50px] cursor-pointer overflow-hidden rounded-lg border border-gray-700 bg-black hover:border-blue-400/50",
+                      "relative h-[50px] cursor-pointer overflow-hidden top-[-10px] bg-black/50",
+                    style: {
+                      height: "10rem"
+                    },
                     children: segments.map((segment) => ({
                       div: {
                         className:
@@ -304,7 +518,7 @@ const Timeline = (props, context) => {
                           left: segment.left,
                           width: segment.width,
                           backgroundColor: segment.color,
-                          borderColor: segment.borderColor
+                          borderColor: "transparent"
                         },
                         title: `${segment.type}: ${segment.startTime} - ${segment.endTime} (Click to delete)`,
                         onclick: () => handleSegmentClick(segment.id),
@@ -318,7 +532,7 @@ const Timeline = (props, context) => {
                                 {
                                   span: {
                                     className:
-                                      "rounded px-1 text-2xl text-black",
+                                      "rounded px-1 text-2xl text-white capitalize",
                                     text: segment.type
                                   }
                                 }
@@ -348,6 +562,9 @@ const Timeline = (props, context) => {
     })
   }
 }
+
+// Import the TimeLineToolbar component from the separate file
+// const TimeLineToolbar = (props, context) => { ... } // Defined in timelineToolBar.js
 
 const Netflix = (props, context) => {
   const { UtilsManager, getState, setState } = context
@@ -677,8 +894,9 @@ const Netflix = (props, context) => {
                 position: "absolute",
                 width: "36px",
                 height: "36px",
-                top: "8rem",
-                left: "10rem"
+                top: "3rem",
+                left: "23%",
+                zIndex: "999"
               },
               children: () => {
                 if (getState("isAnalyzing")) {
@@ -696,7 +914,19 @@ const Netflix = (props, context) => {
 
           {
             div: {
-              className: "timeline-container",
+              className: "timeline-toolbar-container",
+              children: () => {
+                if (getState("isAnalyzing")) {
+                  return {
+                    TimeLineToolbar: {}
+                  }
+                }
+              }
+            }
+          },
+          {
+            div: {
+              className: "relative top-[50px]",
               children: () => {
                 if (getState("isAnalyzing")) {
                   return {
